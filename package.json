@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/WarSongK/myapp/issues"
   },
-  "homepage": "https://github.com/WarSongK/myapp#readme"
+  "homepage": "https://github.com/WarSongK/myapp#readme",
+  "dependencies": {
+    "express": "^4.13.4"
+  }
 }
