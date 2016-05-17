@@ -62,20 +62,20 @@ var LocalStrategy = require('passport-local').Strategy;
 passport.use('local-login',
   new LocalStrategy({
     usernameField : 'email',
-    passwordfield : 'password',
-    passReqToCAllback : true
+    passwordField : 'password',
+    passReqToCallback : true
   },
-  function(req, email, password, done){
-    User.findOne({'email' : email }, function(err, user){
+  function(req, email, password, done) {
+    User.findOne({ 'email' : email }, function(err, user) {
       if (err) return done(err);
 
-      if(!user){
+      if (!user){
         req.flash("email", req.body.email);
         return done(null, false, req.flash('loginError', 'No user found.'));
       }
-      if(user.password != password){
+      if (user.password != password){
         req.flash("email", req.body.email);
-        return done(null, flase, req.flash('loginError', 'Password dones not Match.'));
+        return done(null, false, req.flash('loginError', 'Password dones not Match.'));
       }
       return done(null, user);
     });
@@ -93,26 +93,26 @@ app.get('/login', function(req,res){
 app.post('/login',
   function(req,res,next){
     req.flash("email");
-    if(req.body.email.length === 0 || req.body.password.length === 0){
+    if(req.body.email.length === 0 || req.body.password.length ===  0){
       req.flash("email", req.body.email);
-      req.flash("loginError", 'Please enter both email and password');
+      req.flash("loginError", "Please enter both email and password");
       res.redirect('/login');
     }else{
-      net();
+      next();
     }
   }, passport.authenticate('local-login', {
-    suceessRedirect : '/posts',
+    successRedirect : '/posts',
     failureRedirect : '/login',
-    failureflash : true
+    failureFlash : true
   })
 );
-app.get('logout', function(req,res){
+app.get('/logout', function(req,res){
   req.logout();
-  res.redirct('/');
+  res.redirect('/');
 });
 
 // set suer route
-app.get('users/new', function(req,res){
+app.get('/users/new', function(req,res){
   res.render('users/new', {
                             formData: req.flash('formData')[0],
                             emailError: req.flash('emailError')[0],
@@ -121,7 +121,7 @@ app.get('users/new', function(req,res){
                           }
   );
 });
-app.post('/users', chekcUserRegValidation, function(req,res,next){
+app.post('/users', checkUserRegValidation, function(req,res,next){
   User.create(req.body.user, function (err, user) {
     if(err) return res.json({success:false, message:err});
     res.redirect('/login');
@@ -133,10 +133,10 @@ app.get('/users/:id', function(req,res){
       res.render("users/show", {user: user});
     });
 });
-app.get('users/:id/edit', function(req,res){
+app.get('/users/:id/edit', function(req,res){
   User.findById(req.params.id, function (err,user){
     if(err) return res.json({success:false, message:err});
-    res.render('users/new', {
+    res.render('users/edit', {
                             user : user,
                             formData: req.flash('formData')[0],
                             emailError: req.flash('emailError')[0],
@@ -146,7 +146,7 @@ app.get('users/:id/edit', function(req,res){
     );
   });
 });
-app.put('users/:id', checkUserRegValidation, function(req,res){
+app.put('/users/:id', checkUserRegValidation, function(req,res){
   User.findById(req.params.id, req.body.user, function(err,user){
     if(err) return res.json({success:"false", message:err});
     if(req.body.user.password == user.password){
@@ -186,7 +186,7 @@ app.post('/posts', function(req,res){
   Post.create(req.body.post, function(err,post){
     if(err) return res.json({success:false, message:err});
     //res.json({success:true, data:post});
-    res.redirect('/posts');
+    res.redirect('posts');
   });
 });
 app.get('/posts/:id', function(req,res){
@@ -219,35 +219,41 @@ app.delete('/posts/:id', function(req,res){
   });
 });
 //functions
-function chekcUserRegValidation(req, res, next){
+function checkUserRegValidation(req, res, next) {
   var isValid = true;
 
   async.waterfall(
-    [function(callbasck){
+    [function(callback) {
       User.findOne({email: req.body.user.email, _id: {$ne: mongoose.Types.ObjectId(req.params.id)}},
-      function(err, user){
-        if(user){
-          isValid = false;
-          req.flash("emailEroor","- This email is already resistered");
-        }
-        callback(null, isValid);
-      }
-    );
-  }, function(isValid, callback){
-      User.findOne({nickname: req.body.user.nickname, _id: {$ne: mongoose.Types.ObjectId(req.params.id)}},
         function(err,user){
           if(user){
-            isvalid = flase;
-            req.flash("necknameError","- This nickname is already resistered");
+            isValid = false;
+            req.flash("emailError","- This email is already resistered.");
           }
           callback(null, isValid);
         }
       );
-    }], 
-  )
+    }, function(isValid, callback) {
+      User.findOne({nickname: req.body.user.nickname, _id: {$ne: mongoose.Types.ObjectId(req.params.id)}},
+        function(err,user){
+          if(user){
+            isValid = false;
+            req.flash("nicknameError","- This nickname is already resistered.");
+          }
+          callback(null, isValid);
+        }
+      );
+    }], function(err, isValid) {
+      if(err) return res.json({success:"false", message:err});
+      if(isValid){
+        return next();
+      } else {
+        req.flash("formData",req.body.user);
+        res.redirect("back");
+      }
+    }
+  );
 }
-
-
 
 app.listen(3000, function(){
   console.log('Server on!');
